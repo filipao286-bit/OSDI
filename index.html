@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>OSDI – Test de Superficie Ocular | Megalabs</title>
+<style>
+  :root{
+    --ml-green:#01B02C; /* Megalabs (Brandfetch megalabs.global) */
+    --ml-teal:#108B6F;  /* Megalabs (Brandfetch megalabs.mx) */
+    --ml-bg:#F7F7F7;
+    --ml-ink:#12342d;
+    --ml-muted:#5f7d74;
+    --ml-white:#ffffff;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%;margin:0;background:var(--ml-bg);color:var(--ml-ink);font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,"Helvetica Neue",Arial,"Noto Sans",sans-serif;line-height:1.35}
+  .app{min-height:100%;display:flex;flex-direction:column}
+  header{padding:16px 20px;background:linear-gradient(135deg,var(--ml-teal),var(--ml-green));color:var(--ml-white);box-shadow:0 2px 10px rgba(0,0,0,.12)}
+  header h1{font-size:20px;margin:0;font-weight:700;letter-spacing:.2px}
+  header .sub{opacity:.95;font-size:12px;margin-top:4px}
+  main{flex:1;display:flex;align-items:center;justify-content:center;padding:20px}
+  .card{width:min(900px,100%);background:var(--ml-white);border-radius:18px;box-shadow:0 12px 30px rgba(16,139,111,.18);overflow:hidden}
+  .pad{padding:24px}
+  .step-head{display:flex;align-items:center;justify-content:space-between;gap:12px}
+  .progress{height:8px;background:#e8f3f0;border-radius:999px;overflow:hidden;margin-top:12px}
+  .bar{height:100%;width:0;background:linear-gradient(90deg,var(--ml-teal),var(--ml-green));transition:width .35s ease}
+  .q{min-height:220px;display:flex;flex-direction:column;justify-content:center}
+  .q h2{font-size:28px;line-height:1.2;margin:0 0 6px}
+  .q .hint{color:var(--ml-muted);font-size:14px;margin-bottom:16px}
+  .opts{display:grid;gap:10px;margin-top:10px}
+  .opt{display:flex;align-items:center;gap:12px;padding:14px 16px;border:1.5px solid #e3efe9;border-radius:12px;cursor:pointer;user-select:none;transition:transform .06s ease, border-color .15s ease, background .15s ease}
+  .opt:hover{border-color:var(--ml-teal);}
+  .opt input{accent-color:var(--ml-green);width:18px;height:18px}
+  .opt.active{border-color:var(--ml-teal);background:linear-gradient(0deg,#f4fbf7,#ffffff)}
+  .k{font-weight:700;min-width:28px;text-align:center;color:var(--ml-teal)}
+  .controls{display:flex;justify-content:space-between;align-items:center;margin-top:18px;gap:12px}
+  .btn{appearance:none;border:0;border-radius:999px;padding:12px 16px;font-weight:700;cursor:pointer;transition:transform .06s ease,opacity .2s ease;display:inline-flex;align-items:center;gap:8px}
+  .btn:active{transform:translateY(1px)}
+  .btn-primary{background:linear-gradient(135deg,var(--ml-teal),var(--ml-green));color:var(--ml-white)}
+  .btn-muted{background:#ecf6f1;color:#0e5a49;font-weight:600}
+  .btn-link{background:transparent;color:var(--ml-teal);text-decoration:underline}
+  .meta{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px}
+  .field{display:flex;flex-direction:column;gap:6px}
+  .field label{font-size:13px;color:var(--ml-muted)}
+  .field input{padding:12px 12px;border:1.5px solid #e3efe9;border-radius:12px;font-size:15px}
+  .center{display:flex;justify-content:center}
+  .sum{padding:24px}
+  .sum h3{margin:0 0 12px}
+  .badge{display:inline-block;padding:6px 10px;border-radius:999px;font-weight:800;font-size:12px;background:#ecf6f1;color:#0f5a48;border:1px solid #cfe7de}
+  table{width:100%;border-collapse:collapse;margin-top:10px;font-size:14px}
+  th,td{padding:10px 8px;border-bottom:1px solid #edf4f1}
+  th{text-align:left;color:#5a6d67}
+  .score{font-size:42px;font-weight:900;color:var(--ml-teal);margin:6px 0}
+  .severity{font-size:16px;font-weight:800}
+  footer{padding:10px 20px;color:#4e6c63;text-align:center;font-size:12px}
+  .visually-hidden{position:absolute!important;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+  /* Full-height question view on small screens */
+  @media (max-width:600px){
+    .q h2{font-size:22px}
+    .meta{grid-template-columns:1fr}
+  }
+  .summary-layout{display:flex;flex-direction:column;gap:24px;margin-top:16px;min-width:0}
+  .result-panel{border:2px solid currentColor;border-radius:18px;padding:24px;text-align:center;background:#f0faf5;scroll-margin-top:16px}
+  .score{font-size:clamp(56px,15vw,88px);line-height:1.1;color:inherit}
+  .severity{font-size:clamp(32px,9vw,54px);line-height:1.15;text-transform:uppercase;overflow-wrap:anywhere}
+  .result-panel.normal{color:#116b46}.result-panel.leve{color:#805b00;background:#fff9e5}
+  .result-panel.moderado{color:#a34400;background:#fff1e5}.result-panel.severo{color:#ad2333;background:#fff0f2}
+  .result-panel .hint{color:var(--ml-ink)}
+  .step-head{flex-wrap:wrap}.badge{max-width:100%;overflow-wrap:anywhere}
+  .controls{flex-wrap:wrap}.controls>div{flex-wrap:wrap}
+  .btn{min-height:44px;font-size:15px;justify-content:center}
+  .btn[aria-pressed="true"]{background:#d5eee2;outline:2px solid var(--ml-teal)}
+  .error{color:#ae2435;font-weight:600;min-height:1.35em}
+  table{table-layout:fixed}th:first-child{width:9%}th:last-child{width:30%}td{overflow-wrap:anywhere;vertical-align:top}
+  @media(max-width:600px){main{padding:12px;align-items:flex-start}.pad{padding:16px}.sum{padding:0}.result-panel{padding:20px 12px}th,td{padding:10px 4px;font-size:12px}.field input{min-width:0;width:100%;font-size:16px}}
+  /* Print: only summary */
+  @media print{
+    header, .controls, .progress, .q, .meta, .start, .hide-print{display:none !important}
+    .card{box-shadow:none}
+    body{background:#fff}
+    .sum{padding:0}
+    #step-container{padding:0}main{display:block;padding:0}.card{width:100%}.result-panel{break-inside:avoid}tr{break-inside:avoid}
+    table, th, td{border-color:#ddd}
+  }
+</style>
+</head>
+<body>
+<div class="app" role="application" aria-label="OSDI – Índice de Enfermedad de la Superficie Ocular">
+  <header>
+    <h1>OSDI · Índice de Enfermedad de la Superficie Ocular</h1>
+    <div class="sub">Megalabs · Evaluación rápida (última semana)</div>
+  </header>
+
+  <main>
+    <div class="card" id="card">
+      <div class="pad" id="step-container">
+        <!-- Step content injected by JS -->
+      </div>
+      <div class="progress"><div class="bar" id="bar"></div></div>
+    </div>
+  </main>
+
+  <footer class="hide-print">Colores Megalabs · © 2025</footer>
+</div>
+
+<script>
+// --- Configuración OSDI ---
+const QUESTIONS = [
+  "Durante la última semana, ¿con qué frecuencia sus ojos han estado <b>sensibles a la luz (fotofobia)</b>?",
+  "Durante la última semana, ¿con qué frecuencia ha sentido sus ojos <b>arenosos o con sensación de cuerpo extraño</b>?",
+  "Durante la última semana, ¿con qué frecuencia ha tenido <b>dolor, ardor o molestia</b> en los ojos?",
+  "Durante la última semana, ¿con qué frecuencia ha tenido <b>visión borrosa</b>?",
+  "Durante la última semana, ¿con qué frecuencia ha tenido <b>mala visión</b>?",
+  "Durante la última semana, ¿qué tanta <b>dificultad para leer</b> material impreso (por ejemplo, periódico) ha tenido?",
+  "Durante la última semana, ¿qué tanta <b>dificultad para conducir de noche</b> ha tenido?",
+  "Durante la última semana, ¿qué tanta <b>dificultad para trabajar con computador o cajero automático</b> ha tenido?",
+  "Durante la última semana, ¿qué tanta <b>dificultad para ver televisión</b> ha tenido?",
+  "Durante la última semana, ¿con qué frecuencia sus síntomas empeoran en <b>ambientes con viento</b>?",
+  "Durante la última semana, ¿con qué frecuencia sus síntomas empeoran en <b>lugares con aire muy seco</b>?",
+  "Durante la última semana, ¿con qué frecuencia sus síntomas empeoran en <b>áreas con aire acondicionado</b>?"
+];
+
+const OPTIONS = [
+  {label:"Ninguna vez", value:0, key:"0"},
+  {label:"Pocas veces", value:1, key:"1"},
+  {label:"Aproximadamente la mitad del tiempo", value:2, key:"2"},
+  {label:"La mayoría del tiempo", value:3, key:"3"},
+  {label:"Todo el tiempo", value:4, key:"4"}
+];
+
+const state = {
+  current: -1, // -1 = pantalla de inicio (datos)
+  answers: Array(QUESTIONS.length).fill(undefined),
+  name: "",
+  date: new Date(Date.now()-new Date().getTimezoneOffset()*60000).toISOString().slice(0,10)
+};
+
+function escapeHTML(value){return String(value).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
+function $(sel){ return document.querySelector(sel) }
+function setProgress(){
+  const total = QUESTIONS.length + 1; // incluye la pantalla de datos
+  const idx = state.current + 1; // 0..n
+  const pct = Math.max(0, Math.min(100, (idx/total)*100));
+  $("#bar").style.width = pct + "%";
+}
+
+function startScreen(){
+  state.current = -1;
+  setProgress();
+  $("#step-container").innerHTML = `
+    <section class="start">
+      <div class="step-head">
+        <div>
+          <h2 style="margin:0">Datos del paciente</h2>
+          <div class="hint">Complete antes de comenzar el cuestionario.</div>
+        </div>
+        <span class="badge">Duración: 1–2 minutos</span>
+      </div>
+
+      <div class="meta" role="group" aria-label="Datos del paciente">
+        <div class="field">
+          <label for="name">Nombre del paciente</label>
+          <input id="name" type="text" placeholder="Ej.: Juan Pérez" value="${escapeHTML(state.name)}" autocomplete="name"/>
+        </div>
+        <div class="field">
+          <label for="date">Fecha</label>
+          <input id="date" type="date" value="${state.date}"/>
+        </div>
+      </div>
+
+      <div class="q" style="min-height:140px">
+        <p class="hint">Instrucciones: Responda pensando en la <b>última semana</b>. Si una situación no aplica, elija <b>No aplica</b>.</p>
+      </div>
+
+      <div class="controls">
+        <span></span>
+        <button class="btn btn-primary" id="go">Comenzar</button>
+      </div>
+    </section>
+  `;
+  $("#go").addEventListener("click", ()=>{
+    state.name = $("#name").value.trim();
+    state.date = $("#date").value;
+    state.current = 0;
+    renderQuestion();
+  });
+}
+
+function renderQuestion(){
+  setProgress();
+  const i = state.current;
+  const n = QUESTIONS.length;
+  const saved = state.answers[i];
+
+  $("#step-container").innerHTML = `
+    <div class="step-head">
+      <div>
+        <div class="badge">Pregunta ${i+1} de ${n}</div>
+        <h2>OSDI</h2>
+      </div>
+      <div class="badge" title="Nombre del paciente">${escapeHTML(state.name || "Paciente sin nombre")}</div>
+    </div>
+
+    <div class="q" aria-live="polite">
+      <h2>${QUESTIONS[i]}</h2>
+      <div class="hint">Seleccione una opción:</div>
+      <div class="opts" role="radiogroup" aria-label="Opciones de respuesta">
+        ${OPTIONS.map((opt,idx)=>{
+          const checked = (saved!==null && saved===opt.value) ? "checked" : "";
+          const active = saved===opt.value ? " active" : "";
+          const id = `q${i}_opt${idx}`;
+          return `
+            <label class="opt${active}" for="${id}" data-idx="${idx}">
+              <input id="${id}" type="radio" name="q${i}" value="${opt.value===null?'NA':opt.value}" ${checked} />
+              <span class="k">${opt.key}</span>
+              <span>${opt.label}</span>
+            </label>
+          `;
+        }).join("")}
+      </div>
+    </div>
+
+    <p id="answer-error" class="error" role="alert"></p>
+    <div class="controls">
+      <button class="btn btn-muted" id="back">&larr; Anterior</button>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-link" id="skip" aria-pressed="${saved === null}">No aplica</button>
+        <button class="btn btn-primary" id="next">Siguiente &rarr;</button>
+      </div>
+    </div>
+  `;
+
+  // Listeners for selecting option (only highlight/save, not advance)
+  document.querySelectorAll(".opt").forEach(el=>{
+    el.querySelector("input").addEventListener("change", ()=>{
+      document.querySelectorAll(".opt").forEach(o=>o.classList.remove("active"));
+      el.classList.add("active");
+      const idx = Number(el.dataset.idx);
+      const opt = OPTIONS[idx];
+      state.answers[i] = opt.value;
+      $("#skip").setAttribute("aria-pressed","false");
+      $("#answer-error").textContent="";
+    });
+  });
+
+  $("#back").addEventListener("click", ()=>{
+    if(i<=0){startScreen(); return;}
+    state.current = i-1;
+    renderQuestion();
+  });
+
+  $("#skip").addEventListener("click", ()=>{
+    state.answers[i] = null; // NA
+    renderQuestion();
+  });
+
+  $("#next").addEventListener("click", ()=>{
+    if(state.answers[i] === undefined){
+      $("#answer-error").textContent="Seleccione una respuesta o marque No aplica antes de continuar.";
+      return;
+    }
+    goNext();
+  });
+}
+
+function goNext(){
+  const i = state.current;
+  if(i < QUESTIONS.length - 1){
+    state.current = i+1;
+    renderQuestion();
+  }else{
+    renderSummary();
+  }
+}
+
+function computeScore(){
+  const answered = state.answers.filter(v => typeof v === "number" && Number.isFinite(v));
+  const n = answered.length;
+  const sum = answered.reduce((a,b)=> a + (b||0), 0);
+  const score = n>0 ? (sum*25)/n : null;
+  const rounded = score === null ? null : Math.round(score*10)/10;
+  if(n===0) return {sum,n,score:null,severity:"Sin resultado",level:"empty"};
+  let severity = "Normal (0–12)";
+  if(rounded >= 33) severity = "Severo (33–100)";
+  else if(rounded >= 23) severity = "Moderado (23–32)";
+  else if(rounded >= 13) severity = "Leve (13–22)";
+  return {sum, n, score:rounded, severity, level:severity.split(" ")[0].toLowerCase()};
+}
+
+function renderSummary(){
+  setProgress();
+  $("#bar").style.width="100%";
+  const {sum,n,score,severity,level} = computeScore();
+  const rows = QUESTIONS.map((q, i)=>{
+    const val = state.answers[i];
+    const label = val===null ? "No aplica" : OPTIONS.find(o=>o.value===val)?.label + ` (${val})`;
+    return `<tr><td>${i+1}.</td><td>${q.replace(/<[^>]+>/g,'')}</td><td>${label||""}</td></tr>`;
+  }).join("");
+
+  $("#step-container").innerHTML = `
+    <section class="sum" id="summary">
+      <div class="step-head">
+        <div>
+          <h2 style="margin:0">Resultado OSDI</h2>
+          <div class="hint">Cálculo: (Suma de respuestas × 25) ÷ (# de preguntas contestadas)</div>
+        </div>
+        <span class="badge">${state.date ? new Date(state.date+"T12:00:00").toLocaleDateString("es-CO") : "Sin fecha"}</span>
+      </div>
+
+      <div class="summary-layout">
+        <div>
+          <div class="badge" style="margin-bottom:8px">Paciente</div>
+          <div style="font-weight:800;font-size:18px">${escapeHTML(state.name || "—")}</div>
+          <table aria-label="Respuestas">
+            <thead>
+              <tr><th>#</th><th>Ítem</th><th>Respuesta</th></tr>
+            </thead>
+            <tbody>
+              ${rows}
+            </tbody>
+          </table>
+        </div>
+        <div class="result-panel ${level}" id="result-panel" tabindex="-1">
+          <div class="badge">Puntuación OSDI</div>
+          <div class="score" aria-live="polite">${score === null ? "—" : score.toFixed(1)}</div>
+          <div class="severity">${severity.split(" (")[0]}</div>
+          <p>${score === null ? "No se puede calcular: todas las respuestas son No aplica." : severity.substring(severity.indexOf("("))}</p>
+          <div class="hint" style="margin-top:8px">
+            Preguntas contestadas: <b>${n}</b> / ${QUESTIONS.length}<br/>
+            No aplica: <b>${state.answers.filter(v=>v===null).length}</b><br/>
+            Suma de respuestas: <b>${sum}</b>
+          </div>
+          <div class="center hide-print" style="margin-top:14px">
+            <button class="btn btn-primary" onclick="window.print()">Descargar PDF</button>
+          </div>
+          <div class="center hide-print" style="margin-top:6px">
+            <button class="btn btn-muted" onclick="restart()">Reiniciar</button>
+          </div>
+        </div>
+      </div>
+    </section>
+  `;
+  $("#result-panel").focus({preventScroll:true});
+  $("#result-panel").scrollIntoView({block:"start"});
+}
+
+function restart(){
+  state.current = -1;
+  state.answers = Array(QUESTIONS.length).fill(undefined);
+  startScreen();
+}
+
+// Init
+startScreen();
+</script>
+</body>
+</html>
